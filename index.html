@@ -22,6 +22,7 @@
 		<script type="text/javascript" src="js/app.js"></script>
 		<script type="text/javascript" src="js/models.js"></script>
 		<script type="text/javascript" src="js/barChart.js"></script>
+		<script type="text/javascript" src="js/network.js"></script>
 	</head>
 	<body> 
 		<script type="text/x-handlebars" data-template-name="application">
@@ -42,11 +43,18 @@
 			</div>
 			<div class="row">
 				<div class="col-md-10 col-md-offset-2">
-					{{#each model}}
-						{{render "tweet" this}}
-					{{/each}}
+					{{#if model.grouped}}
+						{{bar-chart data=model.data}}
+					{{else}}
+						{{#each model.data}}
+							{{render "tweet" this}}
+						{{/each}}
+					{{/if}}
 				</div>
 			</div>
+		</script>
+		<script type="text/x-handlebars" data-template-name="entities">
+			{{network-diagram data=model}}
 		</script>
 		<script type="text/x-handlebars" data-template-name="tweet">
 			<div class="well row">
@@ -62,11 +70,7 @@
 			</div>
 			<br>
 		</script>
-		<script type="text/x-handlebars" data-template-name="hashtags">
-			<h1>Hashtags</h1>
-			<br>
-			{{bar-chart data=model}}
-		</script>
 		<script type="text/x-handlebars" id="components/bar-chart"></script>
+		<script type="text/x-handlebars" id="components/network-diagram"></script>
 	</body>
 </html>

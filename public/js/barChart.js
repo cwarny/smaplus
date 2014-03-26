@@ -1,5 +1,3 @@
-d3.sma = {};
-
 d3.sma.barChart = function module() {
 	var margin = {top: 20, right: 20, bottom: 40, left: 40},
 		width = 800,
@@ -13,19 +11,18 @@ d3.sma.barChart = function module() {
 
 	function exports(_selection) {
 		_selection.each(function(_data) {
-
-			var maxHashtagLength = d3.max(_data, function(d) { return d.get("id").length; });
+			var maxHashtagLength = d3.max(_data, function(d) { return d._id.length; });
 			margin.left = maxHashtagLength * 5;
 
 			var chartW = width - margin.left - margin.right,
 				chartH = height - margin.top - margin.bottom;
 
 			var y = d3.scale.ordinal()
-				.domain(_data.map(function(d, i) { return d.get("id"); }))
+				.domain(_data.map(function(d, i) { return d._id; }))
 				.rangeRoundBands([0, chartH], .1);
 
 			var x = d3.scale.linear()
-				.domain([0, d3.max(_data, function(d, i) { return d.get("count"); })])
+				.domain([0, d3.max(_data, function(d, i) { return d.count; })])
 				.range([chartW, 0]);
 
 			var yAxis = d3.svg.axis()
@@ -68,22 +65,22 @@ d3.sma.barChart = function module() {
 				.classed("bar", true)
 				.attr({
 					height: barH-1,
-					width: function(d, i) { return chartW - x(d.get("count")); }
+					width: function(d, i) { return chartW - x(d.count); }
 				})
 				.on("mouseover", dispatch.customHover);
 
 			bar.append("text")
-				.attr("x", function(d) { return chartW - x(d.get("count")) - 3; })
+				.attr("x", function(d) { return chartW - x(d.count) - 3; })
 				.attr("y", barH / 2)
 				.attr("dy", ".35em")
-				.text(function(d) { return d.get("count"); });
+				.text(function(d) { return d.count; });
 
 			bar.append("text")
 				.attr("x", function(d) { return -5; })
 				.attr("y", barH / 2)
 				.attr("dy", ".35em")
 				.style("fill","black")
-				.text(function(d) { return d.get("id"); });
+				.text(function(d) { return d._id; });
 
 		});	
 	}

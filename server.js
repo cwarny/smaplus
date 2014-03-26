@@ -42,10 +42,92 @@ app.get("/tweets", function(req, res) {
 	);
 });
 
+app.get("/entities", function(req, res) {
+	tweets.find(
+		{
+			$where:"this.entities.hashtags.length > 1 || this.entities.user_mentions.length > 1 || this.entities.urls > 1"
+		},
+		{
+			"entities.hashtags":1,
+			"entities.user_mentions":1,
+			"entities.urls":1
+		}
+	).toArray(function(err,results) {
+		var l = {},
+			n = {};
+		results.forEach(function(d) {
+			d.entities = [].concat(
+				d.entities.hashtags.map(function(ht) {
+					return {
+						id:ht.text,
+						type:"hashtag"
+					}
+				}),
+				d.entities.user_mentions.map(function(um) {
+					return {
+						id:um.screen_name,
+						type:"user_mention"
+					}
+				}),
+				d.entities.urls.map(function(url) {
+					return {
+						id:url.expanded_url,
+						type:"url"
+					}
+				})
+			);
+			for (var i=0; i<d.entities.length-1; i++) {
+				var e1 = d.entities[i];
+				if (!n.hasOwnProperty(e1.id)) n[e1.id] = e1;
+				for (var j=i+1; j<d.entities.length; j++) {
+					var e2 = d.entities[j];
+					if (e1.id !== e2.id) {
+						if (e1.id < e2.id) {
+							if (l.hasOwnProperty(e1.id)) {
+								if (l[e1.id].hasOwnProperty(e2.id)) {
+									l[e1.id][e2.id] += 1;
+								} else {
+									l[e1.id][e2.id] = 1;
+								}
+							} else {
+								l[e1.id] = {};
+								l[e1.id][e2.id] = 1
+							}
+						} else {
+							if (l.hasOwnProperty(e2.id)) {
+								if (l[e2.id].hasOwnProperty(e1.id)) {
+									l[e2.id][e1.id] += 1;
+								} else {
+									l[e2.id][e1.id] = 1;
+								}
+							} else {
+								l[e2.id] = {};
+								l[e2.id][e1.id] = 1
+							}
+						}
+					}		
+				}	
+			}
+			if (!n.hasOwnProperty(d.entities[d.entities.length-1])) n[d.entities[d.entities.length-1].id] = d.entities[d.entities.length-1];
+		});
+		
+		var links = [],
+			nodes = [];
+		for (source in l) {
+			for (target in l[source]) {
+				links.push({source:source, target:target, weight:l[source][target]});
+			}
+		}
+		for (var node in n) {
+			nodes.push(n[node]);
+		}
+
+		res.json({nodes:nodes,links:links});
+	});
+});
+
 function buildPipeline(query) {
 	var pipeline = [];
-
-	if (query) query = query.replace(/%3D/g,"=").replace(/%2C/g,",").replace(/%3A/g,":").replace(/%26/g,"&");
 
 	var re = /(?:filter:([^,]+))*,*(?:group:([^,]+))*,*(?:sort:([^,]+))*/g;
 	var commands = re.exec(query);
@@ -97,7 +179,6 @@ function buildPipeline(query) {
 	}
 
 	if (sort) {
-		console.log(sort);
 		var re = /(?:by=([^&]+))*&*dir=([^&]+)/g;
 		var result = re.exec(sort);
 		var by = result[1];
