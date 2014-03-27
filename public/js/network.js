@@ -1,5 +1,4 @@
 d3.sma.network = function module() {
-
 	var width = 800,
 		height = 648;
 
@@ -19,6 +18,7 @@ d3.sma.network = function module() {
 				.start();
 
 			var colors = d3.scale.ordinal().domain(["hashtag","user_mention","url"]).range(["#1f77b4","#ff7f0e","#2ca02c"]);
+			var lineThicknessScale = d3.scale.linear().domain([1,d3.max(_data.links,function(d) {return d.weight;})]).range([1,5]);
 
 			if (!svg) {
 				svg = d3.select("body")
@@ -88,7 +88,8 @@ d3.sma.network = function module() {
 				links.attr("x1", function(d) { return d.source.x; })
 					.attr("y1", function(d) { return d.source.y; })
 					.attr("x2", function(d) { return d.target.x; })
-					.attr("y2", function(d) { return d.target.y; });
+					.attr("y2", function(d) { return d.target.y; })
+					.style("stroke-width", function(d) { return lineThicknessScale(d.weight); });
 
 				nodes.attr("transform", function(d) {
 					return "translate(" + d.x + "," + d.y + ")";

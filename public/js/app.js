@@ -87,6 +87,7 @@ App.BasicChartComponent = Ember.Component.extend({
 App.NetworkDiagramComponent = App.BasicChartComponent.extend({
 	renderChart: function() {
 		var chart = d3.sma.network();
+		console.log(this.get("data"));
 		d3.select("body")
 			.datum(this.get("data"))
 			.call(chart);

@@ -1,7 +1,8 @@
 var express = require("express"),
 	app = express(),
 	path = require("path"),
-	mongodb = require("mongodb");
+	mongodb = require("mongodb"),
+	uu = require("underscore");
 
 var MONGODB_URI = "mongodb://localhost/tweets",
 	db,
@@ -46,6 +47,29 @@ app.get("/entities", function(req, res) {
 	tweets.find(
 		{
 			$where:"this.entities.hashtags.length > 1 || this.entities.user_mentions.length > 1 || this.entities.urls > 1"
+			// $where: function() { 
+			// 	var entities = [].concat(
+			// 		this.entities.hashtags.map(function(ht) {
+			// 			return {
+			// 				id:ht.text,
+			// 				type:"hashtag"
+			// 			}
+			// 		}),
+			// 		this.entities.user_mentions.map(function(um) {
+			// 			return {
+			// 				id:um.screen_name,
+			// 				type:"user_mention"
+			// 			}
+			// 		}),
+			// 		this.entities.urls.map(function(url) {
+			// 			return {
+			// 				id:url.expanded_url,
+			// 				type:"url"
+			// 			}
+			// 		})
+			// 	);
+			// 	return entities.length > 0;
+			// }
 		},
 		{
 			"entities.hashtags":1,
@@ -55,6 +79,8 @@ app.get("/entities", function(req, res) {
 	).toArray(function(err,results) {
 		var l = {},
 			n = {};
+
+		var c = 0;
 		results.forEach(function(d) {
 			d.entities = [].concat(
 				d.entities.hashtags.map(function(ht) {
@@ -78,7 +104,11 @@ app.get("/entities", function(req, res) {
 			);
 			for (var i=0; i<d.entities.length-1; i++) {
 				var e1 = d.entities[i];
-				if (!n.hasOwnProperty(e1.id)) n[e1.id] = e1;
+				if (!n.hasOwnProperty(e1.id)) {
+					// e1.index = c;
+					n[e1.id] = e1;
+					// c++;
+				}
 				for (var j=i+1; j<d.entities.length; j++) {
 					var e2 = d.entities[j];
 					if (e1.id !== e2.id) {
@@ -108,18 +138,44 @@ app.get("/entities", function(req, res) {
 					}		
 				}	
 			}
-			if (!n.hasOwnProperty(d.entities[d.entities.length-1])) n[d.entities[d.entities.length-1].id] = d.entities[d.entities.length-1];
+			if (!n.hasOwnProperty(d.entities[d.entities.length-1])) {
+				// d.entities[d.entities.length-1].index = c;
+				n[d.entities[d.entities.length-1].id] = d.entities[d.entities.length-1];
+				// c++;
+			}
 		});
 		
 		var links = [],
 			nodes = [];
+		// for (source in l) {
+		// 	for (target in l[source]) {
+		// 		links.push({source:n[source].index, target:n[target].index, weight:l[source][target]});
+		// 	}
+		// }
+		// for (var node in n) {
+		// 	nodes.push(n[node]);
+		// }
+
+		nodes = uu.values(n);
+
 		for (source in l) {
 			for (target in l[source]) {
-				links.push({source:source, target:target, weight:l[source][target]});
+				var source_index = 0;
+				for (var i=0; i<nodes.length; i++) {
+					if (nodes[i].id == source) {
+						source_index = i;
+						break;
+					}
+				}
+				var target_index = 0;
+				for (var i=0; i<nodes.length; i++) {
+					if (nodes[i].id == target) {
+						target_index = i;
+						break;
+					}
+				}
+				links.push({source:source_index,target:target_index,weight:l[source][target]});
 			}
-		}
-		for (var node in n) {
-			nodes.push(n[node]);
 		}
 
 		res.json({nodes:nodes,links:links});
