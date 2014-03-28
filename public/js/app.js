@@ -1,4 +1,5 @@
 d3.sma = {};
+var l, n;
 
 var App = Ember.Application.create();
 
@@ -78,6 +79,58 @@ App.EntitiesRoute = Ember.Route.extend({
 	}
 });
 
+App.EntitiesController = Ember.Controller.extend({
+	selectedNodeId: function() {
+		var k = _.keys(this.get("model.n"))
+		return k[Math.round(Math.random()*k.length-1)];
+	}.property("model"),
+
+	nodes: function() {
+		return _.sortBy(_.values(this.get("model.n")), function(n) {
+			return -n.count;
+		});
+	}.property("selectedNodeId"),
+
+	graphData: function() {
+		var l = this.get("model.l");
+		var n = this.get("model.n");
+		n[this.get("selectedNodeId")].selected = true;
+		var connectedComponent = _.keys(bfs(this.get("model.l"), this.get("selectedNodeId"), {}));
+		var ll = _.pick(this.get("model.l"), connectedComponent);
+		var nn = _.pick(this.get("model.n"), connectedComponent);
+		var nodes = _.values(nn);
+		var links = [];
+		for (source in ll) {
+			for (target in ll[source]) {
+				var source_index = 0;
+				for (var i=0; i<nodes.length; i++) {
+					if (nodes[i].id == source) {
+						source_index = i;
+						break;
+					}
+				}
+				var target_index = 0;
+				for (var i=0; i<nodes.length; i++) {
+					if (nodes[i].id == target) {
+						target_index = i;
+						break;
+					}
+				}
+				links.push({source:source_index,target:target_index,weight:ll[source][target]});
+			}
+		}
+		return { nodes:nodes, links:links };
+	}.property("selectedNodeId"),
+
+	actions: {
+		changeSelectedNodeId: function(nodeId) {
+			var n = this.get("model.n");
+			n[this.get("selectedNodeId")].selected = false;
+			this.set("selectedNodeId", nodeId);
+		}
+	}
+});
+
 App.BasicChartComponent = Ember.Component.extend({
 	didInsertElement: function() {
 		Ember.run.once(this, "renderChart");
@@ -87,7 +140,7 @@ App.BasicChartComponent = Ember.Component.extend({
 App.NetworkDiagramComponent = App.BasicChartComponent.extend({
 	renderChart: function() {
 		var chart = d3.sma.network();
-		console.log(this.get("data"));
+
 		d3.select("body")
 			.datum(this.get("data"))
 			.call(chart);
@@ -96,13 +149,22 @@ App.NetworkDiagramComponent = App.BasicChartComponent.extend({
 
 App.BarChartComponent = App.BasicChartComponent.extend({
 	renderChart: function() {
+		var self = this;
 		var barChart = d3.sma.barChart()
-			.height(this.get("data").length * 25);
+			.height(this.get("data").length * 25)
+			.on("customClick", function(d) {
+				self.sendAction("action", d.id);
+			});
+
 		d3.select("body")
 			.datum(this.get("data"))
 			.call(barChart);
-	}.observes("data")
+	}.observes("data"),
 });
+
+
+
+
 
 App.MultipleSelect = Ember.Select.extend({
 	// init: function() {
@@ -127,3 +189,13 @@ App.MultipleSelect = Ember.Select.extend({
 		this.$().trigger("liszt:updated");
 	}.observes("selection")
 });
+
+// Utilities
+
+function bfs(l, nodeId, marked) {
+	marked[nodeId] = true;
+	for (neighbor in l[nodeId]) {
+		if (!marked.hasOwnProperty(neighbor)) bfs(l, neighbor, marked);
+	}
+	return marked;
+}

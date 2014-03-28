@@ -1,49 +1,53 @@
 d3.sma.barChart = function module() {
 	var margin = {top: 20, right: 20, bottom: 40, left: 40},
-		width = 800,
-		height = 25000,
+		width = 500,
 		gap = 0,
 		ease = "bounce";
 
 	var svg;
 
-	var dispatch = d3.dispatch("customHover");
+	var dispatch = d3.dispatch("customClick");
 
 	function exports(_selection) {
 		_selection.each(function(_data) {
-			var maxHashtagLength = d3.max(_data, function(d) { return d._id.length; });
-			margin.left = maxHashtagLength * 5;
+			var maxLength = d3.max(_data, function(d) { return d.id.length; });
+			margin.left = maxLength * 5;
 
 			var chartW = width - margin.left - margin.right,
 				chartH = height - margin.top - margin.bottom;
 
-			var y = d3.scale.ordinal()
-				.domain(_data.map(function(d, i) { return d._id; }))
+			var yScale = d3.scale.ordinal()
+				.domain(_data.map(function(d, i) { return d.id; }))
 				.rangeRoundBands([0, chartH], .1);
 
-			var x = d3.scale.linear()
+			var xScale = d3.scale.linear()
 				.domain([0, d3.max(_data, function(d, i) { return d.count; })])
 				.range([chartW, 0]);
 
-			var yAxis = d3.svg.axis()
-				.scale(y)
-				.orient("left");
+			// var yAxis = d3.svg.axis()
+			// 	.scale(yScale)
+			// 	.orient("left");
 
-			var xAxis = d3.svg.axis()
-				.scale(x)
-				.orient("bottom");
+			// var xAxis = d3.svg.axis()
+			// 	.scale(xScale)
+			// 	.orient("bottom");
 
 			var barH = chartH / _data.length;
 
-			if (!svg) {
-				svg = d3.select(this)
+			svg = d3.select(".barchart");
+			if (!svg[0][0]) {
+				svg = d3.select("#barchart")
 					.append("svg")
-					.classed("chart", true);
+					.classed("barchart", true);
+			
+				var container = svg.append("g")
+					.classed("container-group", true);
 
-				var container = svg.append("g").classed("container-group", true);
-				container.append("g").classed("chart-group", true);
-				container.append("g").classed("x-axis-group axis", true);
-				container.append("g").classed("y-axis-group axis", true);
+				container.append("g")
+					.classed("chart-group", true);
+
+				// container.append("g").classed("x-axis-group axis", true);
+				// container.append("g").classed("y-axis-group axis", true);
 			}
 
 			svg.transition().attr({ width: width, height: height });
@@ -51,26 +55,41 @@ d3.sma.barChart = function module() {
 			svg.select(".container-group")
 				.attr({ transform: "translate(" + margin.left + "," + margin.top + ")" });
 
-			var gapSize = y.rangeBand() / 100 * gap;
-			var barH = y.rangeBand() - gapSize;
+			var gapSize = yScale.rangeBand() / 100 * gap;
+			var barH = yScale.rangeBand() - gapSize;
 
 			var bar = svg.select(".chart-group")
-				.selectAll("g")
-				.data(_data)
-				.enter()
-				.append("g")
-				.attr("transform", function(d, i) { return "translate(" + 0 + "," + i * barH + ")"; });
+				.selectAll(".bar")
+				.data(_data, function(d) { return d.id; })
+				.attr("class",function(d) {
+					if (d.selected) return "bar selected";
+					else return "bar";
+				});
 
-			bar.append("rect")
-				.classed("bar", true)
+			bar.exit().remove();
+
+			barEnter = bar.enter()
+				.append("g");
+
+			barEnter.attr("transform", function(d, i) { return "translate(" + 0 + "," + i * barH + ")"; });
+
+			barEnter.append("rect")
 				.attr({
+					class: function(d) {
+						if (d.selected) return "bar selected";
+						else return "bar";
+					},
 					height: barH-1,
-					width: function(d, i) { return chartW - x(d.count); }
+					width: function(d, i) { 
+						return chartW - xScale(d.count); 
+					}
 				})
-				.on("mouseover", dispatch.customHover);
+				.on("click", function(d, i) {
+					dispatch.customClick(d);
+				});
 
 			bar.append("text")
-				.attr("x", function(d) { return chartW - x(d.count) - 3; })
+				.attr("x", function(d) { return chartW - xScale(d.count) - 3; })
 				.attr("y", barH / 2)
 				.attr("dy", ".35em")
 				.text(function(d) { return d.count; });
@@ -80,9 +99,9 @@ d3.sma.barChart = function module() {
 				.attr("y", barH / 2)
 				.attr("dy", ".35em")
 				.style("fill","black")
-				.text(function(d) { return d._id; });
+				.text(function(d) { return d.id; });
 
-		});	
+		});
 	}
 
 	exports.width = function(_x) {

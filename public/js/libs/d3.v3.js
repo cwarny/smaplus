@@ -5757,7 +5757,6 @@ d3 = function() {
       }
       for (i = 0; i < m; ++i) {
         o = links[i];
-        console.log(o);
         if (typeof o.source == "number") o.source = nodes[o.source];
         if (typeof o.target == "number") o.target = nodes[o.target];
         ++o.source.weight;
