@@ -19,11 +19,11 @@ d3.sma.network = function module() {
 			var colorScale = d3.scale.ordinal().domain(["hashtag","user_mention","url"]).range(["#1f77b4","#ff7f0e","#2ca02c"]);
 			var lineThicknessScale = d3.scale.linear().domain([1,d3.max(_data.links,function(d) {return d.weight;})]).range([1,5]);
 
-			svg = d3.select(".network");
+			svg = d3.select(".entities-network");
 			if (!svg[0][0]) {
-				svg = d3.select("#network")
+				svg = d3.select("#entities-network")
 					.append("svg")
-					.classed("network", true)
+					.classed("entities-network", true)
 					.attr("width", width)
 					.attr("height", height);
 			}
@@ -64,39 +64,51 @@ d3.sma.network = function module() {
 
 			var node = svg.selectAll(".node")
 				.data(_data.nodes, function(d) { return d.id; })
-				.attr("class",function(d) {
-					if (d.selected) return "node selected";
-					else return "node";
+				.attr("class", function(d) {
+					if (d.selected) return "node selected clickable";
+					else return "node clickable";
 				});
 
 			node.exit().remove();
 			var nodeEnter = node.enter()
 				.append("g")
 				.attr("class",function(d) {
-					if (d.selected) return "node selected";
-					else return "node";
+					if (d.selected) return "node selected clickable";
+					else return "node clickable";
 				})
 				.call(node_drag);
 
 			nodeEnter.append("circle")
 				.attr("r", 10);
 
-			nodeEnter.on("mouseover", function(d) {
-					d3.select(this)
-						.append("text")
-						.attr("class", "nodetext")
-						.attr("dx", 12)
-						.attr("dy", ".35em")
-						.text(function(d) { return d.id });
-				})
-				.on("mouseout", function(d) {
-					d3.select(this)
-						.select("text")
-						.remove()
-				});
+			// nodeEnter.on("mouseover", function(d) {
+			// 		d3.select(this)
+			// 			.append("text")
+			// 			.attr("class", "nodetext")
+			// 			.attr("dx", 12)
+			// 			.attr("dy", ".35em")
+			// 			.text(function(d) { return d.id });
+			// 	})
+			// 	.on("mouseout", function(d) {
+			// 		d3.select(this)
+			// 			.select("text")
+			// 			.remove()
+			// 	});
 
 			node.select("circle")
+				.attr("data-toggle","tooltip")
+				.attr("data-placement","top")
+				.attr("title", function(d) {
+					return d.id;
+				})
 				.style("fill",function(d,i) { return colorScale(d.type); });
+
+			$(document).ready(function () {
+				$("svg circle").tooltip({
+					"container": "body",
+					"placement": "top"
+				});
+			});
 
 			force.on("tick", tick);
 

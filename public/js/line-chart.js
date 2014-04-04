@@ -1,17 +1,12 @@
 d3.sma.barChart = function module() {
-	var margin = {top: 20, right: 20, bottom: 40, left: 40},
+	var margin = { top: 20, right: 20, bottom: 40, left: 40 },
 		width = 500,
+		height = 500,
 		gap = 0,
 		ease = "bounce";
 
-	var svg;
-
-	var dispatch = d3.dispatch("customClick");
-
 	function exports(_selection) {
 		_selection.each(function(_data) {
-			var maxLength = d3.max(_data, function(d) { return d.id.length; });
-			margin.left = maxLength * 5;
 
 			var chartW = width - margin.left - margin.right,
 				chartH = height - margin.top - margin.bottom;
@@ -21,24 +16,24 @@ d3.sma.barChart = function module() {
 				.rangeRoundBands([0, chartH], .1);
 
 			var xScale = d3.scale.linear()
-				.domain([0, d3.max(_data, function(d, i) { return d.count; })])
+				.domain([0, d3.max(_data, function(d, i) { return d.value; })])
 				.range([chartW, 0]);
 
-			// var yAxis = d3.svg.axis()
-			// 	.scale(yScale)
-			// 	.orient("left");
+			var yAxis = d3.svg.axis()
+				.scale(yScale)
+				.orient("left");
 
-			// var xAxis = d3.svg.axis()
-			// 	.scale(xScale)
-			// 	.orient("bottom");
+			var xAxis = d3.svg.axis()
+				.scale(xScale)
+				.orient("bottom");
 
 			var barH = chartH / _data.length;
 
-			svg = d3.select(".barchart");
+			svg = d3.select(".bar-chart");
 			if (!svg[0][0]) {
-				svg = d3.select("#barchart")
+				svg = d3.select("#bar-chart")
 					.append("svg")
-					.classed("barchart", true);
+					.classed("bar-chart", true);
 			
 				var container = svg.append("g")
 					.classed("container-group", true);
@@ -46,8 +41,8 @@ d3.sma.barChart = function module() {
 				container.append("g")
 					.classed("chart-group", true);
 
-				// container.append("g").classed("x-axis-group axis", true);
-				// container.append("g").classed("y-axis-group axis", true);
+				container.append("g").classed("x-axis-group axis", true);
+				container.append("g").classed("y-axis-group axis", true);
 			}
 
 			svg.transition().attr({ width: width, height: height });
@@ -60,11 +55,7 @@ d3.sma.barChart = function module() {
 
 			var bar = svg.select(".chart-group")
 				.selectAll(".bar")
-				.data(_data, function(d) { return d.id; })
-				.attr("class",function(d) {
-					if (d.selected) return "bar selected";
-					else return "bar";
-				});
+				.data(_data, function(d) { return d.id; });
 
 			bar.exit().remove();
 
@@ -75,31 +66,12 @@ d3.sma.barChart = function module() {
 
 			barEnter.append("rect")
 				.attr({
-					class: function(d) {
-						if (d.selected) return "bar selected";
-						else return "bar";
-					},
+					class: "bar",
 					height: barH-1,
 					width: function(d, i) { 
-						return chartW - xScale(d.count); 
+						return chartW - xScale(d.value); 
 					}
-				})
-				.on("click", function(d, i) {
-					dispatch.customClick(d);
 				});
-
-			bar.append("text")
-				.attr("x", function(d) { return chartW - xScale(d.count) - 3; })
-				.attr("y", barH / 2)
-				.attr("dy", ".35em")
-				.text(function(d) { return d.count; });
-
-			bar.append("text")
-				.attr("x", function(d) { return -5; })
-				.attr("y", barH / 2)
-				.attr("dy", ".35em")
-				.style("fill","black")
-				.text(function(d) { return d.id; });
 
 		});
 	}
@@ -127,8 +99,6 @@ d3.sma.barChart = function module() {
 		ease = _x;
 		return this;
 	};
-
-	d3.rebind(exports, dispatch, "on");
 
 	return exports;
 }

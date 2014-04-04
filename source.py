@@ -3,6 +3,7 @@ import twitter
 import sys
 import time
 from urllib2 import URLError
+import random
 
 def oauth_login():
     CONSUMER_KEY = 'ZSQCknnf5fXbnF8xvj5PmQ'
@@ -84,6 +85,10 @@ def twitter_search(twitter_api,q,max_statuses=200,**kw):
     return statuses
 
 def save_to_mongo(data, mongo_db, mongo_db_coll, **mongo_conn_kw):
+    
+    for d in data:
+        d["hasEntities"] = d.has_key("entities") and ((d["entities"].has_key("hashtags") and len(d["entities"]["hashtags"]) > 1) or (d["entities"].has_key("user_mentions") and len(d["entities"]["user_mentions"]) > 1) or (d["entities"].has_key("urls") and len(d["entities"]["urls"]) > 1))
+        d["random"] = random.random()
     
     # Connects to the MongoDB server running on 
     # localhost:27017 by default

@@ -1,5 +1,4 @@
-d3.sma = {};
-var l, n;
+var l;
 
 var App = Ember.Application.create();
 
@@ -36,6 +35,7 @@ var App = Ember.Application.create();
 
 App.Router.map(function() {
 	this.resource("tweets"),
+	this.resource("users"),
 	this.resource("entities")
 });
 
@@ -44,32 +44,82 @@ App.TweetsRoute = Ember.Route.extend({
 		q: {
 			refreshModel: true,
 			replace: true
+		},
+		user: {
+			refreshModel: true,
+			replace: true
 		}
 	},
+
 	model: function(params) {
-		for (var k in params) { if (params[k] === "undefined" || params[k] === "null" || params[k] === null || params[k] === undefined) delete params[k]; };
 		// return this.store.findQuery("tweet", params);
-		var q;
-		if (params.q) q = params.q.replace(/=/g,"%3D").replace(/,/g,"%2C").replace(/:/g,"%3A").replace(/&/g,"%26")
-		return Ember.$.getJSON("/tweets?q=" + q).then(function(data) {
-			var g = false;
-			if (q) g = q.indexOf("group") != -1;
-			if (!g) d3.selectAll("svg").remove();
-			return { grouped: g , data: data };
+		return Ember.$.getJSON("/tweets", params).then(function(data) {
+			console.log(data);
+			return data;
 		});
 	},
+
+	setupController: function (controller, model) {
+		controller.set("model", model);
+		
+		Ember.$.getJSON("/geo/world-110m2.json").then(function(data) {
+			controller.set("topology", data);
+		});
+
+		// var query = "";
+		// console.log(controller.get("user"));
+		// if (controller.get("q")) query += "q=" + controller.get("q");
+		// if (controller.get("user")) query += "&user=" + controller.get("user");
+		// if (query) query = "?" + query;
+		// Ember.$.getJSON("/coordinates" + query).then(function(data) {
+		// 	controller.set("coordinates", data);
+		// });
+
+		// Ember.$.getJSON("/timeseries" + query).then(function(data) {
+		// 	controller.set("timeseries", data);
+		// });
+	},
+
 	actions: {
 		search: function() {
 			var q = this.get("controller.query").replace(/=/g,"%3D").replace(/,/g,"%2C").replace(/:/g,"%3A").replace(/&/g,"%26");
-			console.log(this.get("controller.query"));
-			console.log(q);
-			this.transitionTo("/tweets?q=" + q);
+			this.transitionTo("tweets", {
+				queryParams:{
+					q:q
+				}
+			});
 		}
 	}
 });
 
 App.TweetsController = Ember.Controller.extend({
-	queryParams: ["q"]
+	queryParams: ["q", "user"],
+
+	q: null,
+	user: null,
+
+	sortProperties: function () {
+		return [this.get("sortingProperty")];
+	}.property("sortingProperty"),
+
+	sortAscending: false,
+
+	sortingProperty: "score"
+});
+
+App.UsersRoute = Ember.Route.extend({
+	model: function() {
+		return Ember.$.getJSON("/users");
+	}
+});
+
+App.UsersController = Ember.Controller.extend({
+	needs: ["tweets"],
+	actions: {
+		changeSelectedUser: function(screen_name) {
+			this.transitionToRoute("tweets", {queryParams: {user: screen_name}});
+		}
+	}
 });
 
 App.EntitiesRoute = Ember.Route.extend({
@@ -80,6 +130,7 @@ App.EntitiesRoute = Ember.Route.extend({
 });
 
 App.EntitiesController = Ember.Controller.extend({
+
 	selectedNodeId: function() {
 		var k = _.keys(this.get("model.n"))
 		return k[Math.round(Math.random()*k.length-1)];
@@ -88,16 +139,15 @@ App.EntitiesController = Ember.Controller.extend({
 	nodes: function() {
 		return _.sortBy(_.values(this.get("model.n")), function(n) {
 			return -n.count;
-		});
+		}).slice(0,100);
 	}.property("selectedNodeId"),
 
 	graphData: function() {
-		var l = this.get("model.l");
-		var n = this.get("model.n");
-		n[this.get("selectedNodeId")].selected = true;
-		var connectedComponent = _.keys(bfs(this.get("model.l"), this.get("selectedNodeId"), {}));
-		var ll = _.pick(this.get("model.l"), connectedComponent);
-		var nn = _.pick(this.get("model.n"), connectedComponent);
+		l = this.get("model.l");
+		this.get("model.n")[this.get("selectedNodeId")].selected = true;
+		var neighborhood = _.keys(bfs(this.get("model.l"), this.get("selectedNodeId"), {}, 0));
+		var ll = _.pick(this.get("model.l"), neighborhood);
+		var nn = _.pick(this.get("model.n"), neighborhood);
 		var nodes = _.values(nn);
 		var links = [];
 		for (source in ll) {
@@ -124,30 +174,84 @@ App.EntitiesController = Ember.Controller.extend({
 
 	actions: {
 		changeSelectedNodeId: function(nodeId) {
-			var n = this.get("model.n");
-			n[this.get("selectedNodeId")].selected = false;
+			this.get("model.n")[this.get("selectedNodeId")].selected = false;
 			this.set("selectedNodeId", nodeId);
 		}
 	}
 });
 
-App.BasicChartComponent = Ember.Component.extend({
+App.TreeMapComponent = Ember.Component.extend({
 	didInsertElement: function() {
 		Ember.run.once(this, "renderChart");
-	}
+	},
+	renderChart: function() {
+		var self = this;
+		var treeMap = d3.sma.treeMap()
+			.on("customClick", function(screen_name) {
+				console.log(screen_name);
+				self.sendAction("action", screen_name);
+			});
+
+		d3.select("body")
+			.datum([this.get("data")])
+			.call(treeMap);
+	}.observes("data")
 });
 
-App.NetworkDiagramComponent = App.BasicChartComponent.extend({
+App.WorldMapComponent = Ember.Component.extend({
+	didInsertElement: function() {
+		Ember.run.once(this, "renderChart");
+	},
+	renderChart: function() {
+		var worldMap = d3.sma.worldMap();
+		
+		d3.select("body")
+			.datum([this.get("topology"), this.get("data")])
+			.call(worldMap);
+	}.observes("data", "topology")
+});
+
+App.ColumnChartComponent = Ember.Component.extend({
+	didInsertElement: function() {
+		Ember.run.once(this, "renderChart");
+	},
+	renderChart: function() {
+		var columnChart = d3.sma.columnChart();
+		console.log(this.get("data"));
+		d3.select("body")
+			.datum(this.get("data"))
+			.call(columnChart);		
+	}.observes("data")
+});
+
+App.BubbleChartComponent = Ember.Component.extend({
+	didInsertElement: function() {
+		Ember.run.once(this, "renderChart");
+	},
+	renderChart: function() {
+		var barChart = d3.sma.barChart();
+		d3.select("body")
+			.datum(this.get("data"))
+			.call(barChart);
+	}.observes("data")
+});
+
+App.NetworkDiagramComponent = Ember.Component.extend({
+	didInsertElement: function() {
+		Ember.run.once(this, "renderChart");
+	},
 	renderChart: function() {
 		var chart = d3.sma.network();
-
 		d3.select("body")
 			.datum(this.get("data"))
 			.call(chart);
 	}.observes("data")
 });
 
-App.BarChartComponent = App.BasicChartComponent.extend({
+App.BarChartComponent = Ember.Component.extend({
+	didInsertElement: function() {
+		Ember.run.once(this, "renderChart");
+	},
 	renderChart: function() {
 		var self = this;
 		var barChart = d3.sma.barChart()
@@ -155,23 +259,46 @@ App.BarChartComponent = App.BasicChartComponent.extend({
 			.on("customClick", function(d) {
 				self.sendAction("action", d.id);
 			});
-
 		d3.select("body")
 			.datum(this.get("data"))
 			.call(barChart);
-	}.observes("data"),
+	}.observes("data")
 });
 
+App.SortingButtonView = Ember.View.extend({
+	tagName: "button",
+	attributeBindings: ["type"],
+	classNames: ["btn", "btn-default"],
+	classNameBindings: ["isActive:active"],
+	type: "button",
 
+	isActive: function () {
+		return this.get("property") === this.get("controller.sortingProperty");
+	}.property("property","controller.sortingProperty"),
 
+	click: function () {
+		this.set("controller.sortingProperty", this.get("property"));
+	}
+});
 
+App.Select = Ember.Select.extend({
+	classNames: ["chosen-select"],
+
+	content: ["Holy shit","Wonderful wonderful"],
+
+	attributeBindings: ["content"],
+ 
+	didInsertElement: function() {
+		this._super();
+		this.$().chosen();
+	},
+ 
+	selectionChanged: function() {
+
+	}.observes("selection")
+});
 
 App.MultipleSelect = Ember.Select.extend({
-	// init: function() {
-	// 	App.Tweet.eachAttribute(function(name, meta) {
-	// 		console.log(name, meta);
-	// 	});
-	// },
 
 	multiple: true,
 	value: "Select fields",
@@ -192,10 +319,12 @@ App.MultipleSelect = Ember.Select.extend({
 
 // Utilities
 
-function bfs(l, nodeId, marked) {
+function bfs(l, nodeId, marked, c) {
+	c++;
 	marked[nodeId] = true;
-	for (neighbor in l[nodeId]) {
-		if (!marked.hasOwnProperty(neighbor)) bfs(l, neighbor, marked);
+	var neighbors = _.object(_.sortBy(_.pairs(l[nodeId]), function(d) { return -d[1]; }).slice(0,5));
+	for (neighbor in neighbors) {
+		if (!marked.hasOwnProperty(neighbor) && c < 4) bfs(l, neighbor, marked, c);
 	}
 	return marked;
 }

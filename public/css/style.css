@@ -1,5 +1,21 @@
-rect {
-	cursor: pointer;
+html,
+body {
+	height: 100%;
+	/* The html and body elements cannot have any padding or margin. */
+}
+
+.tree-node {
+	border: solid 1px black;
+	font: 10px sans-serif;
+	line-height: 12px;
+	overflow: hidden;
+	position: absolute;
+	text-indent: 2px;
+	background-size: 100% 100%;
+}
+
+.tree-node:active {
+	border: yellow;
 }
 
 rect.bar {
@@ -11,14 +27,30 @@ rect.bar.selected {
 	opacity: 1.0;
 }
 
-.barchart text {
+.bar-chart text {
 	fill: white;
 	font: 10px sans-serif;
 	text-anchor: end;
 }
 
-.node circle {
+.clickable {
 	cursor: pointer;
+}
+
+img.clickable {
+	padding-top:30px;
+	padding-bottom:30px;
+	padding-right:30px;
+	padding-left:30px;
+}
+
+img.clickable:hover {
+	border-width:2px;
+	border-style:inset;
+	border-color: #de2d26;
+	-moz-border-radius: 15px;
+	border-radius: 15px;
+	border-spacing:50px;
 }
 
 .node.selected circle {
@@ -40,6 +72,18 @@ line.link {
 
 .nodeid {
 	cursor: pointer;
+}
+
+.axis path,
+.axis line {
+	fill: none;
+	stroke: black;
+	shape-rendering: crispEdges;
+}
+
+.axis text {
+	font-family: sans-serif;
+	font-size: 11px;
 }
 
 a {
@@ -115,4 +159,17 @@ input::-webkit-input-placeholder {
 
 .uicontrol-multiple-select {
 	width: 200px;
+}
+
+select.filter {
+	border:none;
+	-webkit-appearance:none;
+	background-color: transparent;
+}
+
+input.filter {
+	/*border:none;*/
+	-webkit-appearance:none;
+	background-color: transparent;
+	width:75px;
 }

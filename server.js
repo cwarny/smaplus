@@ -2,7 +2,8 @@ var express = require("express"),
 	app = express(),
 	path = require("path"),
 	mongodb = require("mongodb"),
-	uu = require("underscore");
+	uu = require("underscore"),
+	async = require("async");
 
 var MONGODB_URI = "mongodb://localhost/tweets",
 	db,
@@ -33,12 +34,230 @@ app.get("/", function(req, res) {
 });
 
 app.get("/tweets", function(req, res) {
-	console.log(req.query.q);
-	var pipeline = buildPipeline(req.query.q);
-	console.log(pipeline);
-	tweets.aggregate(pipeline,
-		function(err, results) {
+	console.log(req.query);
+	var pipeline1 = [],
+		pipeline2 = [],
+		pipeline3 = [];
+
+	var filter1 = {},
+		filter2 = {};
+
+	if (req.query.user && req.query.user !== "null" && req.query.user !== undefined && req.query.user !== "null" && req.query.user !== undefined) {
+		filter1["user.screen_name"] = req.query.user;
+		filter2["user.screen_name"] = req.query.user;
+	}
+	if (req.query.q && req.query.q !== "null" && req.query.q !== null && req.query.user !== undefined && req.query.user !== "null" && req.query.user !== undefined) {
+		filter1["$text"] = { $search: req.query.q };
+		filter2["$text"] = { $search: req.query.q };
+	}
+
+	pipeline1.push({ $match:filter1 });
+	pipeline3.push({ $match:filter1 });
+	filter2["coordinates.type"] = "Point";
+	pipeline2.push({ $match:filter2 });
+
+	pipeline1.push({
+		$project:{
+			screen_name:"$user.screen_name",
+			name:"$user.name",
+			profile_image_url:"$user.profile_image_url",
+			text:1,
+			retweet_count:1,
+			favorite_count:1,
+			id:1,
+			random:1,
+			score:{
+				$meta:"textScore"
+			}
+		}
+	});
+
+	pipeline2.push({
+		$project: {
+			coords: "$coordinates.coordinates",
+			random:1,
+			score:{
+				$meta:"textScore"
+			}
+		}
+	});
+
+	pipeline3.push({
+		$project: {
+			created_at: 1,
+			_id: 0,
+			random:1,
+			score:{
+				$meta:"textScore"
+			}
+		}
+	});
+
+	if (req.query.q && req.query.q !== "null" && req.query.q !== null && req.query.user !== undefined && req.query.user !== "null" && req.query.user !== undefined) {
+		pipeline1.push({ $sort: {score:-1}});
+		pipeline2.push({ $sort: {score:-1}});
+		pipeline3.push({ $sort: {score:-1}});
+	} else {
+		pipeline1.push({$sort: {random:-1} });
+		pipeline2.push({$sort: {random:-1} });
+		pipeline3.push({$sort: {random:-1} });
+	}
+
+	pipeline1.push({ $limit:100 });
+	pipeline2.push({ $limit:1000 });
+	pipeline3.push({ $limit:1000 });
+
+	async.parallel([
+			function(cb) {
+				tweets.aggregate(
+					pipeline1, function(err,results) {
+						if (req.query.q && req.query.q !== "null" && req.query.q !== null && req.query.user !== undefined && req.query.user !== "null" && req.query.user !== undefined) results.forEach(function(d) { d.score = d.score.toFixed(2); });
+						cb(err, results);
+					}
+				);
+			},
+			function(cb) {
+				tweets.aggregate(
+					pipeline2, function(err, results) {
+						cb(err, results);
+					}
+				);
+			},
+			function(cb) {
+				tweets.aggregate(
+					pipeline3, function(err, results) {
+						var output = uu.chain(results)
+								.countBy(function(d) {
+									var date = new Date(d.created_at);
+									date.setHours(date.getHours() + Math.round(date.getMinutes()/60));
+									date.setMinutes(0); date.setSeconds(0); date.setMilliseconds(0);
+									return date;
+								})
+								.pairs()
+								.map(function(d) {
+									return { time: d[0], count: d[1] };
+								})
+								.filter(function(d) {
+									return d.time !== "Invalid Date";
+								})
+								.value();
+
+						cb(err, output);
+
+					}
+				);
+			}
+		], function(err, results) {
+			res.json({tweets: results[0], coordinates: results[1], timeseries: results[2]})
+		}
+	);
+	
+});
+
+app.get("/coordinates", function(req, res) {
+	var pipeline = [];
+	var filter = {};
+	if (req.query.user && req.query.user !== "null" && req.query.user !== null) filter["user.screen_name"] = req.query.user;
+	if (req.query.q && req.query.q !== "null" && req.query.q !== null) filter["$text"] = { $search: req.query.q };
+	filter["coordinates.type"] = "Point";
+	pipeline.push({
+		$match:filter
+	});
+	pipeline.push({
+		$project: {
+			coords: "$coordinates.coordinates",
+			random:1,
+			score:{
+				$meta:"textScore"
+			}
+		}
+	});
+	if (req.query.q && req.query.q !== "null" && req.query.q !== null) pipeline.push({ $sort: {score:-1}});
+	else pipeline.push({$sort: {random:-1} });
+	pipeline.push({ $limit:1000 });
+
+	tweets.aggregate(
+		pipeline, function(err, results) {
 			res.json(results);
+		}
+	);
+});
+
+app.get("/timeseries", function(req, res) {
+	var pipeline = [];
+	var filter = {};
+	if (req.query.user && req.query.user !== "null" && req.query.user !== null) filter["user.screen_name"] = req.query.user;
+	if (req.query.q && req.query.q !== "null" && req.query.q !== null) filter["$text"] = { $search: req.query.q };
+	pipeline.push({
+		$match:filter
+	});
+	pipeline.push({
+		$project: {
+			created_at: 1,
+			_id: 0,
+			random:1,
+			score:{
+				$meta:"textScore"
+			}
+		}
+	});
+	if (req.query.q && req.query.q !== "null" && req.query.q !== null) pipeline.push({ $sort: {score:-1}});
+	else pipeline.push({$sort: {random:-1} });
+	pipeline.push({ $limit:1000 });
+
+	tweets.aggregate(
+		pipeline, function(err, results) {
+			var output = uu.chain(results)
+					.countBy(function(d) {
+						var date = new Date(d.created_at);
+						date.setHours(date.getHours() + Math.round(date.getMinutes()/60));
+						date.setMinutes(0); date.setSeconds(0); date.setMilliseconds(0);
+						return date;
+					})
+					.pairs()
+					.map(function(d) {
+						return { time: d[0], count: d[1] };
+					})
+					.filter(function(d) {
+						return d.time !== "Invalid Date";
+					})
+					.value();
+
+			res.json(output);
+
+		}
+	);
+});
+
+app.get("/users", function(req, res) {
+	tweets.aggregate([
+			{
+				$project: {
+					name: "$user.screen_name",
+					pic: "$user.profile_image_url"
+				}
+			},
+			{
+				$group: {
+					_id: "$name",
+					size: {
+						$sum:1
+					},
+					pic: {
+						$first: "$pic"
+					}
+				}
+			},
+			{
+				$sort: {
+					size: -1
+				}
+			},
+			{
+				$limit: 500
+			}
+		], function(err, results) {
+			res.json({name:"root",children:results});
 		}
 	);
 });
@@ -46,7 +265,7 @@ app.get("/tweets", function(req, res) {
 app.get("/entities", function(req, res) {
 	tweets.find(
 		{
-			$where:"this.entities.hashtags.length > 1 || this.entities.user_mentions.length > 1 || this.entities.urls > 1"
+			hasEntities:true
 		},
 		{
 			"entities.hashtags":1,
@@ -102,82 +321,3 @@ app.get("/entities", function(req, res) {
 		res.json({n:n,l:l});
 	});
 });
-
-function buildPipeline(query) {
-	var pipeline = [];
-
-	var re = /(?:filter:([^,]+))*,*(?:group:([^,]+))*,*(?:sort:([^,]+))*/g;
-	var commands = re.exec(query);
-	var filter,
-		group,
-		sort;
-	if (commands) {
-		filter = commands[1];
-		group = commands[2];
-		sort = commands[3];
-	}
-
-	if (filter) {
-		var params = {};
-		filter.split("&").forEach(function(param) {
-			var re = /(.+)=(.+)/;
-			var result = re.exec(param);
-			params[result[1]] = result[2];
-		});
-			
-		pipeline.push({ $match: params });
-	}
-
-	if (group) {
-		var re = /(?:var=([^&]+)&)?by=([^&]+)(?:&how=([^&]+))?/g;
-		var result = re.exec(group);
-		var v = result[1];
-		var by = result[2];
-		var how = result[3];
-		var unwind = /(.+)\.(.+)$/.exec(by);
-		if (unwind) pipeline.push({ $unwind: "$" + unwind[1] });
-		else pipeline.push({ $unwind: "$" + by });
-
-		var p = {};
-		if (unwind) p["_" + unwind[2]] = "$" + by;
-		else p["_" + by] = "$" + by;
-
-		pipeline.push({ $project: p });
-
-		if (how && v) {
-			var g = { _id: "$" + Object.keys(p)[0] };
-			var h = {};
-			h["$" + how] = "$" + v;
-			g[v + "_" + how] = h;
-			pipeline.push({ $group: g });
-		} else {
-			pipeline.push({ $group: { _id: "$" + Object.keys(p)[0] , count: { $sum: 1 } } });
-		}
-	}
-
-	if (sort) {
-		var re = /(?:by=([^&]+))*&*dir=([^&]+)/g;
-		var result = re.exec(sort);
-		var by = result[1];
-		var dir = result[2];
-		dir = dir === "asc" ? 1 : -1;
-		if (by) {
-			var s = {};
-			if (by) s[by] = dir;
-			else s[v + "_" + how] = dir;
-			pipeline.push({ $sort: s });
-		} else if (group) {			
-			if (how && v) {
-				var s = {};
-				s[v + "_" + how] = dir;
-				pipeline.push({ $sort: s });
-			} else {
-				pipeline.push({ $sort: { count : dir } });
-			}
-		}
-	}
-
-	pipeline.push({$limit: 100});
-
-	return pipeline;
-}
