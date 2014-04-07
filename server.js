@@ -98,7 +98,7 @@ app.get("/tweets", function(req, res) {
 		pipeline2.push({ $sort: {score:-1}});
 		pipeline3.push({ $sort: {score:-1}});
 	} else {
-		pipeline1.push({$sort: {random:-1} });
+		// pipeline1.push({$sort: {random:-1} });
 		pipeline2.push({$sort: {random:-1} });
 		pipeline3.push({$sort: {random:-1} });
 	}
