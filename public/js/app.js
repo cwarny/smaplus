@@ -1,5 +1,3 @@
-var l;
-
 var App = Ember.Application.create();
 
 // App.TweetSerializer = DS.RESTSerializer.extend({
@@ -52,39 +50,38 @@ App.TweetsRoute = Ember.Route.extend({
 	},
 
 	model: function(params) {
-		console.log(params);
 		return Ember.$.getJSON("/tweets", params).then(function(data) {
 			return data;
 		});
 	},
 
 	setupController: function (controller, model) {
-		console.log(model);
-		controller.set("tweets", model.tweets);
-		controller.set("coordinates", model.coordinates);
-		controller.set("timeseries", model.timeseries);
+
+		controller.set("tweets", model);
 		
 		Ember.$.getJSON("/geo/world-110m2.json").then(function(data) {
 			controller.set("topology", data);
 		});
 
-		// var query = "";
-		// console.log(controller.get("user"));
-		// if (controller.get("q")) query += "q=" + controller.get("q");
-		// if (controller.get("user")) query += "&user=" + controller.get("user");
-		// if (query) query = "?" + query;
-		// Ember.$.getJSON("/coordinates" + query).then(function(data) {
-		// 	controller.set("coordinates", data);
-		// });
+		var query = "";
 
-		// Ember.$.getJSON("/timeseries" + query).then(function(data) {
-		// 	controller.set("timeseries", data);
-		// });
+		if (controller.get("q")) query += "q=" + controller.get("q");
+		if (controller.get("user")) query += "&user=" + controller.get("user");
+		if (query) query = "?" + query;
+
+		Ember.$.getJSON("/coordinates" + query).then(function(data) {
+			controller.set("coordinates", data);
+		});
+
+		Ember.$.getJSON("/timeseries" + query).then(function(data) {
+			controller.set("timeseries", data);
+		});
 	},
 
 	actions: {
 		search: function() {
 			var q = this.get("controller.query").replace(/=/g,"%3D").replace(/,/g,"%2C").replace(/:/g,"%3A").replace(/&/g,"%26");
+			// this.set("controller.q", q);
 			this.transitionTo("tweets", {
 				queryParams:{
 					q:q
@@ -97,8 +94,8 @@ App.TweetsRoute = Ember.Route.extend({
 App.TweetsController = Ember.Controller.extend({
 	queryParams: ["q", "user"],
 
-	q: null,
-	user: null,
+	q:null,
+	user:null,
 
 	sortProperties: function () {
 		return [this.get("sortingProperty")];
@@ -110,7 +107,7 @@ App.TweetsController = Ember.Controller.extend({
 
 	actions: {
 		removeUser: function() {
-			this.set("user", null);
+			this.transitionToRoute("tweets", {queryParams:{user:false}})
 		}
 	}
 });
@@ -125,14 +122,14 @@ App.UsersController = Ember.Controller.extend({
 	needs: ["tweets"],
 	actions: {
 		changeSelectedUser: function(screen_name) {
-			this.transitionToRoute("/tweets?user=" + screen_name);
+			this.setProperties({"controllers.tweets.q":null, "controllers.tweets.user":screen_name});
+			this.transitionToRoute("tweets", {queryParams: {user:screen_name}});
 		}
 	}
 });
 
 App.EntitiesRoute = Ember.Route.extend({
-	model: function(params) {
-		// return this.store.find("entities", params);
+	model: function() {
 		return Ember.$.getJSON("/entities");
 	}
 });
@@ -151,7 +148,6 @@ App.EntitiesController = Ember.Controller.extend({
 	}.property("selectedNodeId"),
 
 	graphData: function() {
-		l = this.get("model.l");
 		this.get("model.n")[this.get("selectedNodeId")].selected = true;
 		var neighborhood = _.keys(bfs(this.get("model.l"), this.get("selectedNodeId"), {}, 0));
 		var ll = _.pick(this.get("model.l"), neighborhood);
@@ -193,7 +189,6 @@ App.TreeMapComponent = Ember.Component.extend({
 		var self = this;
 		var treeMap = d3.sma.treeMap()
 			.on("customClick", function(screen_name) {
-				console.log(screen_name);
 				self.sendAction("action", screen_name);
 			});
 
@@ -216,6 +211,7 @@ App.WorldMapComponent = Ember.Component.extend({
 App.ColumnChartComponent = Ember.Component.extend({
 	renderChart: function() {
 		var columnChart = d3.sma.columnChart();
+
 		d3.select("body")
 			.datum(this.get("data"))
 			.call(columnChart);		
