@@ -21,7 +21,7 @@
 		<script src="http://d3js.org/topojson.v1.min.js"></script>
 		<script type="text/javascript" src="js/libs/crossfilter.js"></script>
 		<script type="text/javascript" src="js/app.js"></script>
-		<script type="text/javascript" src="js/models.js"></script>
+		<!-- <script type="text/javascript" src="js/models.js"></script> -->
 		<script type="text/javascript" src="js/chart.js"></script>
 	</head>
 	<body>
@@ -65,7 +65,7 @@
 						<b style="padding-right:10px">User:</b>
 						<button type="button" class="btn btn-default btn-sm">
 							{{user}}
-							{{#link-to "tweets" (query-params user=null)}}<span class="glyphicon glyphicon-remove" style="padding-left:5px"></span>{{/link-to}}
+							<span {{action "removeUser"}} class="glyphicon glyphicon-remove" style="padding-left:5px"></span>
 						</button>
 					</div>
 				{{/if}}
@@ -82,13 +82,13 @@
 			<br>
 			<div class="row">
 				<div class="col-md-5">
-					{{#each model.tweets}}
+					{{#each tweets}}
 						{{render "tweet" this}}
 					{{/each}}
 				</div>
 				<div class="col-md-6 col-md-offset-1">
-					{{world-map topology=topology data=model.coordinates}}
-					{{column-chart data=model.timeseries}}
+					{{world-map topology=topology data=coordinates}}
+					{{column-chart data=timeseries}}
 				</div>
 			</div>
 		</script>

@@ -42,11 +42,11 @@ app.get("/tweets", function(req, res) {
 	var filter1 = {},
 		filter2 = {};
 
-	if (req.query.user && req.query.user !== "null" && req.query.user !== undefined && req.query.user !== "null" && req.query.user !== undefined) {
+	if (req.query.user && req.query.user !== "null" && req.query.user !== null && req.query.user !== "undefined" && req.query.user !== undefined) {
 		filter1["user.screen_name"] = req.query.user;
 		filter2["user.screen_name"] = req.query.user;
 	}
-	if (req.query.q && req.query.q !== "null" && req.query.q !== null && req.query.user !== undefined && req.query.user !== "null" && req.query.user !== undefined) {
+	if (req.query.q && req.query.q !== "null" && req.query.q !== null && req.query.q !== "undefined" && req.query.q !== undefined) {
 		filter1["$text"] = { $search: req.query.q };
 		filter2["$text"] = { $search: req.query.q };
 	}
@@ -93,7 +93,7 @@ app.get("/tweets", function(req, res) {
 		}
 	});
 
-	if (req.query.q && req.query.q !== "null" && req.query.q !== null && req.query.user !== undefined && req.query.user !== "null" && req.query.user !== undefined) {
+	if (req.query.q && req.query.q !== "null" && req.query.q !== null && req.query.q !== "undefined" && req.query.q !== undefined) {
 		pipeline1.push({ $sort: {score:-1}});
 		pipeline2.push({ $sort: {score:-1}});
 		pipeline3.push({ $sort: {score:-1}});
@@ -104,14 +104,14 @@ app.get("/tweets", function(req, res) {
 	}
 
 	pipeline1.push({ $limit:100 });
-	pipeline2.push({ $limit:1000 });
-	pipeline3.push({ $limit:1000 });
+	pipeline2.push({ $limit:500 });
+	pipeline3.push({ $limit:500 });
 
 	async.parallel([
 			function(cb) {
 				tweets.aggregate(
 					pipeline1, function(err,results) {
-						if (req.query.q && req.query.q !== "null" && req.query.q !== null && req.query.user !== undefined && req.query.user !== "null" && req.query.user !== undefined) results.forEach(function(d) { d.score = d.score.toFixed(2); });
+						if (req.query.q && req.query.q !== "null" && req.query.q !== null && req.query.q !== "undefined" && req.query.q !== undefined) results.forEach(function(d) { d.score = d.score.toFixed(2); });
 						cb(err, results);
 					}
 				);
@@ -154,80 +154,80 @@ app.get("/tweets", function(req, res) {
 	
 });
 
-app.get("/coordinates", function(req, res) {
-	var pipeline = [];
-	var filter = {};
-	if (req.query.user && req.query.user !== "null" && req.query.user !== null) filter["user.screen_name"] = req.query.user;
-	if (req.query.q && req.query.q !== "null" && req.query.q !== null) filter["$text"] = { $search: req.query.q };
-	filter["coordinates.type"] = "Point";
-	pipeline.push({
-		$match:filter
-	});
-	pipeline.push({
-		$project: {
-			coords: "$coordinates.coordinates",
-			random:1,
-			score:{
-				$meta:"textScore"
-			}
-		}
-	});
-	if (req.query.q && req.query.q !== "null" && req.query.q !== null) pipeline.push({ $sort: {score:-1}});
-	else pipeline.push({$sort: {random:-1} });
-	pipeline.push({ $limit:1000 });
+// app.get("/coordinates", function(req, res) {
+// 	var pipeline = [];
+// 	var filter = {};
+// 	if (req.query.user && req.query.user !== "null" && req.query.user !== null) filter["user.screen_name"] = req.query.user;
+// 	if (req.query.q && req.query.q !== "null" && req.query.q !== null) filter["$text"] = { $search: req.query.q };
+// 	filter["coordinates.type"] = "Point";
+// 	pipeline.push({
+// 		$match:filter
+// 	});
+// 	pipeline.push({
+// 		$project: {
+// 			coords: "$coordinates.coordinates",
+// 			random:1,
+// 			score:{
+// 				$meta:"textScore"
+// 			}
+// 		}
+// 	});
+// 	if (req.query.q && req.query.q !== "null" && req.query.q !== null) pipeline.push({ $sort: {score:-1}});
+// 	else pipeline.push({$sort: {random:-1} });
+// 	pipeline.push({ $limit:1000 });
 
-	tweets.aggregate(
-		pipeline, function(err, results) {
-			res.json(results);
-		}
-	);
-});
+// 	tweets.aggregate(
+// 		pipeline, function(err, results) {
+// 			res.json(results);
+// 		}
+// 	);
+// });
 
-app.get("/timeseries", function(req, res) {
-	var pipeline = [];
-	var filter = {};
-	if (req.query.user && req.query.user !== "null" && req.query.user !== null) filter["user.screen_name"] = req.query.user;
-	if (req.query.q && req.query.q !== "null" && req.query.q !== null) filter["$text"] = { $search: req.query.q };
-	pipeline.push({
-		$match:filter
-	});
-	pipeline.push({
-		$project: {
-			created_at: 1,
-			_id: 0,
-			random:1,
-			score:{
-				$meta:"textScore"
-			}
-		}
-	});
-	if (req.query.q && req.query.q !== "null" && req.query.q !== null) pipeline.push({ $sort: {score:-1}});
-	else pipeline.push({$sort: {random:-1} });
-	pipeline.push({ $limit:1000 });
+// app.get("/timeseries", function(req, res) {
+// 	var pipeline = [];
+// 	var filter = {};
+// 	if (req.query.user && req.query.user !== "null" && req.query.user !== null) filter["user.screen_name"] = req.query.user;
+// 	if (req.query.q && req.query.q !== "null" && req.query.q !== null) filter["$text"] = { $search: req.query.q };
+// 	pipeline.push({
+// 		$match:filter
+// 	});
+// 	pipeline.push({
+// 		$project: {
+// 			created_at: 1,
+// 			_id: 0,
+// 			random:1,
+// 			score:{
+// 				$meta:"textScore"
+// 			}
+// 		}
+// 	});
+// 	if (req.query.q && req.query.q !== "null" && req.query.q !== null) pipeline.push({ $sort: {score:-1}});
+// 	else pipeline.push({$sort: {random:-1} });
+// 	pipeline.push({ $limit:1000 });
 
-	tweets.aggregate(
-		pipeline, function(err, results) {
-			var output = uu.chain(results)
-					.countBy(function(d) {
-						var date = new Date(d.created_at);
-						date.setHours(date.getHours() + Math.round(date.getMinutes()/60));
-						date.setMinutes(0); date.setSeconds(0); date.setMilliseconds(0);
-						return date;
-					})
-					.pairs()
-					.map(function(d) {
-						return { time: d[0], count: d[1] };
-					})
-					.filter(function(d) {
-						return d.time !== "Invalid Date";
-					})
-					.value();
+// 	tweets.aggregate(
+// 		pipeline, function(err, results) {
+// 			var output = uu.chain(results)
+// 					.countBy(function(d) {
+// 						var date = new Date(d.created_at);
+// 						date.setHours(date.getHours() + Math.round(date.getMinutes()/60));
+// 						date.setMinutes(0); date.setSeconds(0); date.setMilliseconds(0);
+// 						return date;
+// 					})
+// 					.pairs()
+// 					.map(function(d) {
+// 						return { time: d[0], count: d[1] };
+// 					})
+// 					.filter(function(d) {
+// 						return d.time !== "Invalid Date";
+// 					})
+// 					.value();
 
-			res.json(output);
+// 			res.json(output);
 
-		}
-	);
-});
+// 		}
+// 	);
+// });
 
 app.get("/users", function(req, res) {
 	tweets.aggregate([

@@ -446,6 +446,7 @@ d3.sma.columnChart = function module() {
 
 	function exports(_selection) {
 		_selection.each(function(_data) {
+			console.log("hey");
 
 			_data.forEach(function(d) {
 				d.time = new Date(d.time);

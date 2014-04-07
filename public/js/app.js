@@ -52,15 +52,17 @@ App.TweetsRoute = Ember.Route.extend({
 	},
 
 	model: function(params) {
-		// return this.store.findQuery("tweet", params);
+		console.log(params);
 		return Ember.$.getJSON("/tweets", params).then(function(data) {
-			console.log(data);
 			return data;
 		});
 	},
 
 	setupController: function (controller, model) {
-		controller.set("model", model);
+		console.log(model);
+		controller.set("tweets", model.tweets);
+		controller.set("coordinates", model.coordinates);
+		controller.set("timeseries", model.timeseries);
 		
 		Ember.$.getJSON("/geo/world-110m2.json").then(function(data) {
 			controller.set("topology", data);
@@ -104,7 +106,13 @@ App.TweetsController = Ember.Controller.extend({
 
 	sortAscending: false,
 
-	sortingProperty: "score"
+	sortingProperty: "score",
+
+	actions: {
+		removeUser: function() {
+			this.set("user", null);
+		}
+	}
 });
 
 App.UsersRoute = Ember.Route.extend({
@@ -117,7 +125,7 @@ App.UsersController = Ember.Controller.extend({
 	needs: ["tweets"],
 	actions: {
 		changeSelectedUser: function(screen_name) {
-			this.transitionToRoute("tweets", {queryParams: {user: screen_name}});
+			this.transitionToRoute("/tweets?user=" + screen_name);
 		}
 	}
 });
@@ -181,9 +189,6 @@ App.EntitiesController = Ember.Controller.extend({
 });
 
 App.TreeMapComponent = Ember.Component.extend({
-	didInsertElement: function() {
-		Ember.run.once(this, "renderChart");
-	},
 	renderChart: function() {
 		var self = this;
 		var treeMap = d3.sma.treeMap()
@@ -195,63 +200,38 @@ App.TreeMapComponent = Ember.Component.extend({
 		d3.select("body")
 			.datum([this.get("data")])
 			.call(treeMap);
-	}.observes("data")
+	}.observes("data").on("didInsertElement")
 });
 
 App.WorldMapComponent = Ember.Component.extend({
-	didInsertElement: function() {
-		Ember.run.once(this, "renderChart");
-	},
 	renderChart: function() {
 		var worldMap = d3.sma.worldMap();
 		
 		d3.select("body")
 			.datum([this.get("topology"), this.get("data")])
 			.call(worldMap);
-	}.observes("data", "topology")
+	}.observes("data", "topology").on("didInsertElement")
 });
 
 App.ColumnChartComponent = Ember.Component.extend({
-	didInsertElement: function() {
-		Ember.run.once(this, "renderChart");
-	},
 	renderChart: function() {
 		var columnChart = d3.sma.columnChart();
-		console.log(this.get("data"));
 		d3.select("body")
 			.datum(this.get("data"))
 			.call(columnChart);		
-	}.observes("data")
-});
-
-App.BubbleChartComponent = Ember.Component.extend({
-	didInsertElement: function() {
-		Ember.run.once(this, "renderChart");
-	},
-	renderChart: function() {
-		var barChart = d3.sma.barChart();
-		d3.select("body")
-			.datum(this.get("data"))
-			.call(barChart);
-	}.observes("data")
+	}.observes("data").on("didInsertElement")
 });
 
 App.NetworkDiagramComponent = Ember.Component.extend({
-	didInsertElement: function() {
-		Ember.run.once(this, "renderChart");
-	},
 	renderChart: function() {
 		var chart = d3.sma.network();
 		d3.select("body")
 			.datum(this.get("data"))
 			.call(chart);
-	}.observes("data")
+	}.observes("data").on("didInsertElement")
 });
 
 App.BarChartComponent = Ember.Component.extend({
-	didInsertElement: function() {
-		Ember.run.once(this, "renderChart");
-	},
 	renderChart: function() {
 		var self = this;
 		var barChart = d3.sma.barChart()
@@ -262,7 +242,7 @@ App.BarChartComponent = Ember.Component.extend({
 		d3.select("body")
 			.datum(this.get("data"))
 			.call(barChart);
-	}.observes("data")
+	}.observes("data").on("didInsertElement")
 });
 
 App.SortingButtonView = Ember.View.extend({
