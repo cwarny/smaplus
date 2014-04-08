@@ -81,12 +81,12 @@ App.TweetsRoute = Ember.Route.extend({
 	actions: {
 		search: function() {
 			var q = this.get("controller.query").replace(/=/g,"%3D").replace(/,/g,"%2C").replace(/:/g,"%3A").replace(/&/g,"%26");
-			// this.set("controller.q", q);
-			this.transitionTo("tweets", {
-				queryParams:{
-					q:q
-				}
-			});
+			this.set("controller.q", q);
+			// this.transitionTo("tweets", {
+			// 	queryParams:{
+			// 		q:q
+			// 	}
+			// });
 		}
 	}
 });
@@ -103,13 +103,7 @@ App.TweetsController = Ember.Controller.extend({
 
 	sortAscending: false,
 
-	sortingProperty: "score",
-
-	actions: {
-		removeUser: function() {
-			this.transitionToRoute("tweets", {queryParams:{user:false}})
-		}
-	}
+	sortingProperty: "score"
 });
 
 App.UsersRoute = Ember.Route.extend({
