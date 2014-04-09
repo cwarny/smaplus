@@ -52,7 +52,6 @@ App.TweetsRoute = Ember.Route.extend({
 	},
 
 	model: function(params) {
-		console.log(params);
 		return Ember.$.getJSON("/tweets", params).then(function(data) {
 			return data;
 		});
@@ -67,19 +66,6 @@ App.TweetsRoute = Ember.Route.extend({
 		Ember.$.getJSON("/geo/world-110m2.json").then(function(data) {
 			controller.set("topology", data);
 		});
-
-		// var query = "";
-		// console.log(controller.get("user"));
-		// if (controller.get("q")) query += "q=" + controller.get("q");
-		// if (controller.get("user")) query += "&user=" + controller.get("user");
-		// if (query) query = "?" + query;
-		// Ember.$.getJSON("/coordinates" + query).then(function(data) {
-		// 	controller.set("coordinates", data);
-		// });
-
-		// Ember.$.getJSON("/timeseries" + query).then(function(data) {
-		// 	controller.set("timeseries", data);
-		// });
 	},
 
 	actions: {
